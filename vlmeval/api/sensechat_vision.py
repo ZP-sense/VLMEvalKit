@@ -40,7 +40,7 @@ class SenseChatVisionWrapper(BaseAPI):
         """
         ROOT = LMUDataRoot()
         assert isinstance(dataset, str)
-        img_root = osp.join(ROOT, 'images', img_root_map[dataset] if dataset in img_root_map else dataset)
+        img_root = osp.join(ROOT, 'images', img_root_map(dataset))
         os.makedirs(img_root, exist_ok=True)
         if 'image' in line:
             if isinstance(line['image'], list):
@@ -116,7 +116,7 @@ class SenseChatVisionWrapper(BaseAPI):
             question = line['question']
             prompt = question + ' Answer the question using a single word or phrase.'
         elif dataset is not None and listinstr(['HallusionBench'], dataset):
-            question = line['question']
+            question = line['question'] 
             prompt = question + ' Please answer yes or no. Answer the question using a single word or phrase.'
         elif dataset is not None and DATASET_TYPE(dataset) == 'MCQ' and 'MMMU' not in dataset:
             prompt = self.build_multi_choice_prompt(line, dataset)
@@ -141,8 +141,8 @@ class SenseChatVisionWrapper(BaseAPI):
             for key, item in options.items():
                 question += f'\n{key}. {item}'
             prompt = {
-                'multiple-choice': 'You are an expert in {}. Please solve the university-level {} examination question, which includes interleaved images and text. Your output should be divided into two parts: First, reason about the correct answer. Then write the answer in the following format where X is exactly one of the choices given by the problem: "ANSWER: X". If you are uncertain of the correct answer, guess the most likely one.',  # noqa: E501
-                'open': 'You are an expert in {}. Please solve the university-level {} examination question, which includes interleaved images and text. Your output should be divided into two parts: First, reason about the correct answer. Then write the answer in the following format where X is only the answer and nothing else: "ANSWER: X"'  # noqa: E501
+                'multiple-choice': 'You are an expert in {}. Please solve the university-level {} examination question, which includes interleaved images and text. Your output should be divided into two parts: First, reason about the correct answer. Then write the answer in the following format where X is exactly one of the choices given by the problem: "ANSWER: X". If you are uncertain of the correct answer, guess the most likely one.',
+                'open': 'You are an expert in {}. Please solve the university-level {} examination question, which includes interleaved images and text. Your output should be divided into two parts: First, reason about the correct answer. Then write the answer in the following format where X is only the answer and nothing else: "ANSWER: X"'
             }
             subject = '_'.join(line['id'].split('_')[1:-1])
             prompt = prompt[line['question_type']].format(subject, subject) + '\n' + question
@@ -168,7 +168,7 @@ class SenseChatVisionWrapper(BaseAPI):
         inputs = [inputs] if isinstance(inputs, str) else inputs
         dataset = kwargs.get('dataset', None)
 
-        if dataset is not None and listinstr(['ChartQA_TEST'], dataset):
+        if dataset is not None and listinstr(['ChartQA_TEST','MathVista_MINI'], dataset):
             self.max_num = 12
         elif dataset is not None and listinstr(['DocVQA_VAL', 'DocVQA_TEST'], dataset):
             self.max_num = 18
@@ -182,7 +182,17 @@ class SenseChatVisionWrapper(BaseAPI):
         elif listinstr(['AI2D_TEST'], dataset):
             self.max_new_tokens = 10
         elif 'MMMU' in dataset:
-            self.max_new_tokens = 1024
+            self.max_new_tokens = 4096
+        elif 'MathVista' in dataset:
+            self.max_new_tokens = 4096
+        elif 'MMVet' in dataset:
+            self.max_new_tokens = 4096
+        elif 'OCRBench'in dataset:
+            self.max_new_tokens = 4096
+        elif 'OCRBench'in dataset:
+            self.max_new_tokens = 4096
+        elif 'HallusionBench'in dataset:
+            self.max_new_tokens = 4096
         elif 'MMBench' in dataset:
             self.max_new_tokens = 100
 
@@ -212,7 +222,9 @@ class SenseChatVisionWrapper(BaseAPI):
 
         data = {
             'messages': message,
-            'max_new_tokens': self.max_new_tokens,
+            'max_new_tokens': self.max_new_tokens, # 
+            'temperature':0,
+            'repetition_penalty':1.0,
             'model': self.model,
             'stream': False,
         }
@@ -241,7 +253,7 @@ class SenseChatVisionWrapper(BaseAPI):
             if self.verbose:
                 self.logger.error('---------------------------ERROR---------------------------')
                 self.logger.error(response.json())
-                self.logger.error(f'{type(err)}: {err}')
+                self.logger.error(err)
                 self.logger.error('---------------------------request_id---------------------------' + request_id)
                 self.logger.error(
                     'api error' + response.json()['error']['message']
